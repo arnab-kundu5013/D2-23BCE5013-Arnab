@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniSearch — Multimodal RAG Platform</title>
+    <meta name="description" content="Offline AI-powered Multimodal RAG platform for searching across PDFs, documents, images and audio files.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- top nav bar -->
+    <header id="main-header">
+        <div class="header-left">
+            <span class="logo-icon">◉</span>
+            <h1 class="site-title">OmniSearch</h1>
+            <span class="version-tag">v1</span>
+        </div>
+        <nav id="main-nav">
+            <button class="nav-btn active" data-tab="dashboard" id="nav-dashboard">Dashboard</button>
+            <button class="nav-btn" data-tab="upload" id="nav-upload">Upload</button>
+            <button class="nav-btn" data-tab="query" id="nav-query">Ask</button>
+            <button class="nav-btn" data-tab="image-search" id="nav-image-search">Image Search</button>
+            <button class="nav-btn" data-tab="files" id="nav-files">Files</button>
+            <button class="nav-btn" data-tab="links" id="nav-links">Links</button>
+        </nav>
+        <div class="header-right">
+            <span id="health-dot" class="health-indicator" title="System status"></span>
+        </div>
+    </header>
+
+    <main id="app-content">
+
+        <!-- ============ DASHBOARD ============ -->
+        <section id="tab-dashboard" class="tab-page active">
+            <div class="page-heading">
+                <h2>System Overview</h2>
+                <button id="btn-refresh-stats" class="small-btn" onclick="loadDashboard()">↻ Refresh</button>
+            </div>
+
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Files</div>
+                    <div class="stat-value" id="stat-total-files">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Disk Usage</div>
+                    <div class="stat-value" id="stat-disk-usage">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Chunks Indexed</div>
+                    <div class="stat-value" id="stat-chunks">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Cross-Modal Links</div>
+                    <div class="stat-value" id="stat-links">—</div>
+                </div>
+            </div>
+
+            <!-- file type breakdown -->
+            <div class="section-block">
+                <h3>By File Type</h3>
+                <div id="file-type-breakdown" class="type-breakdown">
+                    <p class="muted-text">Loading stats...</p>
+                </div>
+            </div>
+
+            <!-- vector collection counts -->
+            <div class="section-block">
+                <h3>Vector Collections</h3>
+                <div id="vector-counts" class="vector-grid">
+                    <p class="muted-text">Loading...</p>
+                </div>
+            </div>
+
+            <!-- service health -->
+            <div class="section-block">
+                <h3>Service Health</h3>
+                <div id="health-panel" class="health-grid">
+                    <p class="muted-text">Checking services...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ UPLOAD ============ -->
+        <section id="tab-upload" class="tab-page">
+            <div class="page-heading">
+                <h2>Upload Files</h2>
+            </div>
+            <p class="page-desc">Upload your documents, images, or audio files. The system will index them so you can search and ask questions later.</p>
+
+            <div id="drop-zone" class="drop-zone">
+                <div class="drop-zone-inner">
+                    <span class="drop-icon">+</span>
+                    <p>Drag files here or click to browse</p>
+                    <p class="small-hint">pdf, docx, png, jpg, webp, mp3, wav, m4a</p>
+                    <input type="file" id="file-input" multiple accept=".pdf,.docx,.png,.jpg,.jpeg,.webp,.mp3,.wav,.m4a" />
+                </div>
+            </div>
+
+            <div class="upload-options">
+                <div class="form-group">
+                    <label for="upload-desc">Description (optional)</label>
+                    <input type="text" id="upload-desc" placeholder="What are these files about?" maxlength="500">
+                </div>
+                <div class="form-group">
+                    <label for="upload-tags">Tags (optional, comma separated)</label>
+                    <input type="text" id="upload-tags" placeholder="e.g. research, notes, lecture">
+                </div>
+            </div>
+
+            <div class="upload-actions">
+                <button id="btn-upload" class="primary-btn" disabled onclick="startUpload()">Upload Selected Files</button>
+                <span id="selected-count" class="muted-text"></span>
+            </div>
+
+            <!-- progress cards appear here -->
+            <div id="upload-progress" class="upload-progress-list"></div>
+        </section>
+
+        <!-- ============ QUERY ============ -->
+        <section id="tab-query" class="tab-page">
+            <div class="page-heading">
+                <h2>Ask a Question</h2>
+            </div>
+            <p class="page-desc">Ask anything about your uploaded files. The answer will reference specific parts of your documents.</p>
+
+            <div class="query-form">
+                <textarea id="query-input" rows="3" placeholder="What would you like to know?" maxlength="2000"></textarea>
+                <div class="query-options-row">
+                    <div class="modality-checks">
+                        <label><input type="checkbox" id="mod-text" checked> Text</label>
+                        <label><input type="checkbox" id="mod-image" checked> Images</label>
+                        <label><input type="checkbox" id="mod-audio" checked> Audio</label>
+                    </div>
+                    <button id="btn-query" class="primary-btn" onclick="submitQuery()">Search & Answer</button>
+                </div>
+            </div>
+
+            <!-- streaming answer area -->
+            <div id="answer-area" class="answer-area" style="display:none;">
+                <div class="answer-header">
+                    <h3>Answer</h3>
+                    <span id="query-status" class="status-badge">streaming...</span>
+                </div>
+                <div id="answer-text" class="answer-text"></div>
+
+                <!-- citations -->
+                <div id="citations-block" class="citations-block" style="display:none;">
+                    <h4>Sources</h4>
+                    <ul id="citations-list"></ul>
+                </div>
+
+                <!-- context chunks used -->
+                <div id="context-block" class="context-block" style="display:none;">
+                    <button class="toggle-btn" onclick="toggleContext()">▸ Show retrieved chunks</button>
+                    <div id="context-chunks" class="context-chunks" style="display:none;"></div>
+                </div>
+
+                <!-- usage info -->
+                <div id="usage-info" class="usage-info" style="display:none;"></div>
+            </div>
+        </section>
+
+        <!-- ============ IMAGE SEARCH ============ -->
+        <section id="tab-image-search" class="tab-page">
+            <div class="page-heading">
+                <h2>Search by Image</h2>
+            </div>
+            <p class="page-desc">Upload an image to find related content in your documents, other images, and audio files.</p>
+
+            <div class="image-search-form">
+                <div id="img-drop-zone" class="drop-zone small-drop">
+                    <div class="drop-zone-inner">
+                    <span class="drop-icon">+</span>
+                    <p>Drop an image here</p>
+                        <input type="file" id="img-search-input" accept=".png,.jpg,.jpeg,.webp" />
+                    </div>
+                </div>
+                <div id="img-preview-box" class="img-preview-box" style="display:none;">
+                    <img id="img-preview" alt="preview" />
+                    <button class="small-btn" onclick="clearImageSearch()">x clear</button>
+                </div>
+                <button id="btn-img-search" class="primary-btn" disabled onclick="submitImageSearch()">Search</button>
+            </div>
+
+            <!-- results grouped by modality -->
+            <div id="img-search-results" class="img-results" style="display:none;">
+                <div id="img-caption-display" class="img-caption"></div>
+                <div class="results-columns">
+                    <div class="result-col">
+                        <h4>Text Matches</h4>
+                        <div id="img-res-text"></div>
+                    </div>
+                    <div class="result-col">
+                        <h4>Image Matches</h4>
+                        <div id="img-res-image"></div>
+                    </div>
+                    <div class="result-col">
+                        <h4>Audio Matches</h4>
+                        <div id="img-res-audio"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ FILES ============ -->
+        <section id="tab-files" class="tab-page">
+            <div class="page-heading">
+                <h2>Manage Files</h2>
+                <button class="small-btn" onclick="loadFiles()">↻ Refresh</button>
+            </div>
+
+            <div class="files-toolbar">
+                <div class="filter-group">
+                    <label for="filter-type">Type:</label>
+                    <select id="filter-type" onchange="loadFiles()">
+                        <option value="">All</option>
+                        <option value="pdf">PDF</option>
+                        <option value="docx">DOCX</option>
+                        <option value="image">Image</option>
+                        <option value="audio">Audio</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-status">Status:</label>
+                    <select id="filter-status" onchange="loadFiles()">
+                        <option value="">All</option>
+                        <option value="completed">Completed</option>
+                        <option value="processing">Processing</option>
+                        <option value="queued">Queued</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="files-table-wrap" class="files-table-wrap">
+                <table id="files-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Size</th>
+                            <th>Status</th>
+                            <th>Chunks</th>
+                            <th>Uploaded</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="files-tbody">
+                        <tr><td colspan="7" class="muted-text">Loading files...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-bar" id="pagination-bar"></div>
+
+            <!-- file detail modal / panel -->
+            <div id="file-detail-panel" class="detail-panel" style="display:none;">
+                <div class="detail-panel-header">
+                    <h3 id="detail-filename"></h3>
+                    <button class="small-btn" onclick="closeDetail()">✕ Close</button>
+                </div>
+                <div id="detail-body"></div>
+                <div id="detail-chunks-area">
+                    <h4>Indexed Chunks</h4>
+                    <div id="detail-chunks-list" class="chunks-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ LINKS ============ -->
+        <section id="tab-links" class="tab-page">
+            <div class="page-heading">
+                <h2>Cross-Modal Links</h2>
+                <button class="small-btn" onclick="loadLinks()">↻ Refresh</button>
+            </div>
+            <p class="page-desc">These are the connections found between your documents across different file types.</p>
+
+            <div id="links-table-wrap" class="files-table-wrap">
+                <table id="links-table">
+                    <thead>
+                        <tr>
+                            <th>Source File</th>
+                            <th>Target File</th>
+                            <th>Link Type</th>
+                            <th>Confidence</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody id="links-tbody">
+                        <tr><td colspan="5" class="muted-text">Loading links...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- toast notifications container -->
+    <div id="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
